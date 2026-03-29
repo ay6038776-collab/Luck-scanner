@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luck Scanner | حاسبة الحظ</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020818;
+    --card: rgba(10, 20, 50, 0.8);
+    --border: rgba(100, 180, 255, 0.15);
+    --accent: #00d4ff;
+    --accent2: #7b2fff;
+    --text: #e0f0ff;
+    --muted: #6a8aaa;
+    --green: #00ff88;
+    --yellow: #ffcc00;
+    --red: #ff4466;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Cairo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Stars background */
+  .stars {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+  }
+  .star {
+    position: absolute;
+    border-radius: 50%;
+    background: white;
+    animation: twinkle var(--d) ease-in-out infinite;
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.4); }
+  }
+
+  /* Nebula blobs */
+  .nebula {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .nebula-1 { width: 600px; height: 600px; background: var(--accent2); top: -200px; right: -200px; }
+  .nebula-2 { width: 500px; height: 500px; background: var(--accent); bottom: -200px; left: -200px; }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 50px;
+  }
+  .header .logo-text {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(28px, 6vw, 48px);
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    display: block;
+    animation: glow-text 3s ease-in-out infinite;
+  }
+  @keyframes glow-text {
+    0%, 100% { filter: drop-shadow(0 0 10px rgba(0,212,255,0.3)); }
+    50% { filter: drop-shadow(0 0 25px rgba(0,212,255,0.7)); }
+  }
+  .header .subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    margin-top: 8px;
+    letter-spacing: 2px;
+  }
+  .header .date-badge {
+    display: inline-block;
+    margin-top: 14px;
+    padding: 5px 16px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 13px;
+    color: var(--accent);
+    background: rgba(0,212,255,0.05);
+  }
+
+  /* Scanner Card */
+  .scanner-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 40px 36px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 0 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+
+  .scan-label {
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .input-wrapper {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  .input-wrapper input {
+    width: 100%;
+    padding: 16px 20px;
+    background: rgba(0,212,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text);
+    font-family: 'Cairo', sans-serif;
+    font-size: 18px;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .input-wrapper input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(0,212,255,0.15);
+  }
+  .input-wrapper input::placeholder { color: var(--muted); }
+
+  .scan-btn {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-family: 'Cairo', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 1px;
+  }
+  .scan-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .scan-btn:hover::before { opacity: 1; }
+  .scan-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(0,212,255,0.3); }
+  .scan-btn:active { transform: translateY(0); }
+  .scan-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+  /* Scanning Animation */
+  .scanning-overlay {
+    display: none;
+    text-align: center;
+    padding: 40px 0;
+  }
+  .scanning-overlay.active { display: block; }
+  .scan-ring {
+    width: 100px;
+    height: 100px;
+    border: 3px solid transparent;
+    border-top-color: var(--accent);
+    border-right-color: var(--accent2);
+    border-radius: 50%;
+    margin: 0 auto 20px;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .scan-text {
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    animation: pulse-text 1s ease-in-out infinite;
+  }
+  @keyframes pulse-text { 0%,100%{opacity:0.5} 50%{opacity:1} }
+
+  /* Results */
+  .results {
+    display: none;
+    animation: fadeSlideUp 0.6s ease forwards;
+  }
+  .results.active { display: block; }
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Luck Meter */
+  .luck-meter {
+    text-align: center;
+    margin: 30px 0;
+  }
+  .meter-circle {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 16px;
+  }
+  .meter-circle svg {
+    transform: rotate(-90deg);
+    width: 100%;
+    height: 100%;
+  }
+  .meter-bg { fill: none; stroke: rgba(255,255,255,0.05); stroke-width: 10; }
+  .meter-fill {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 502;
+    stroke-dashoffset: 502;
+    transition: stroke-dashoffset 2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .meter-number {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .meter-number .num {
+    font-family: 'Orbitron', monospace;
+    font-size: 42px;
+    font-weight: 900;
+    line-height: 1;
+  }
+  .meter-number .pct { font-size: 14px; color: var(--muted); }
+  .luck-label {
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 8px;
+  }
+
+  /* Smart Message */
+  .smart-msg {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin: 24px 0;
+    font-size: 17px;
+    line-height: 1.7;
+    color: var(--text);
+    position: relative;
+    overflow: hidden;
+  }
+  .smart-msg::before {
+    content: '✦';
+    position: absolute;
+    top: 10px;
+    left: 16px;
+    color: var(--accent);
+    font-size: 20px;
+  }
+
+  /* Categories Grid */
+  .cats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 24px 0;
+  }
+  .cat-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+    animation: fadeSlideUp 0.5s ease forwards;
+    opacity: 0;
+  }
+  .cat-card:nth-child(1) { animation-delay: 0.1s; }
+  .cat-card:nth-child(2) { animation-delay: 0.2s; }
+  .cat-card:nth-child(3) { animation-delay: 0.3s; }
+  .cat-card:nth-child(4) { animation-delay: 0.4s; }
+  .cat-icon { font-size: 28px; margin-bottom: 8px; }
+  .cat-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .cat-value {
+    font-size: 15px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: inline-block;
+  }
+  .cat-value.good { background: rgba(0,255,136,0.1); color: var(--green); }
+  .cat-value.neutral { background: rgba(255,204,0,0.1); color: var(--yellow); }
+  .cat-value.bad { background: rgba(255,68,102,0.1); color: var(--red); }
+
+  /* Surprise */
+  .surprise-box {
+    background: linear-gradient(135deg, rgba(123,47,255,0.1), rgba(0,212,255,0.1));
+    border: 1px solid rgba(123,47,255,0.3);
+    border-radius: 14px;
+    padding: 20px 24px;
+    margin: 20px 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .surprise-icon { font-size: 36px; }
+  .surprise-title { font-size: 12px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .surprise-text { font-size: 17px; font-weight: 600; }
+
+  /* Share Button */
+  .share-btn {
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    color: var(--accent);
+    font-family: 'Cairo', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .share-btn:hover { background: rgba(0,212,255,0.08); box-shadow: 0 0 20px rgba(0,212,255,0.15); }
+
+  /* Compare Section */
+  .compare-section {
+    margin-top: 30px;
+    padding-top: 30px;
+    border-top: 1px solid var(--border);
+  }
+  .compare-title {
+    font-size: 14px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .compare-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .compare-row input {
+    flex: 1;
+    padding: 12px 16px;
+    background: rgba(0,212,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Cairo', sans-serif;
+    font-size: 15px;
+    text-align: right;
+    outline: none;
+  }
+  .compare-row input:focus { border-color: var(--accent2); }
+  .compare-btn {
+    padding: 12px 20px;
+    background: var(--accent2);
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-family: 'Cairo', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s;
+  }
+  .compare-btn:hover { opacity: 0.85; }
+
+  .compare-result {
+    display: none;
+    margin-top: 16px;
+    padding: 16px;
+    background: rgba(123,47,255,0.05);
+    border: 1px solid rgba(123,47,255,0.2);
+    border-radius: 12px;
+    text-align: center;
+    animation: fadeSlideUp 0.4s ease forwards;
+  }
+  .compare-result.active { display: block; }
+  .compare-bars { display: flex; gap: 20px; justify-content: center; align-items: flex-end; margin-top: 14px; }
+  .cbar { text-align: center; flex: 1; }
+  .cbar-fill {
+    border-radius: 8px 8px 0 0;
+    margin: 0 auto 6px;
+    width: 50px;
+    transition: height 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .cbar-name { font-size: 13px; color: var(--muted); }
+  .cbar-num { font-family: 'Orbitron', monospace; font-size: 16px; font-weight: 700; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--accent2);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-size: 15px;
+    font-weight: 600;
+    z-index: 999;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 500px) {
+    .scanner-card { padding: 24px 18px; }
+    .cats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .compare-row { flex-wrap: wrap; }
+    .compare-row input { min-width: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+<div class="nebula nebula-1"></div>
+<div class="nebula nebula-2"></div>
+
+<div class="container">
+  <div class="header">
+    <span class="logo-text">LUCK SCANNER</span>
+    <div class="subtitle">حاسبة الحظ اليومية</div>
+    <div class="date-badge" id="dateBadge">📅 ...</div>
+  </div>
+
+  <div class="scanner-card">
+
+    <!-- Input Section -->
+    <div id="inputSection">
+      <div class="scan-label">▸ أدخل اسمك لبدء الفحص</div>
+      <div class="input-wrapper">
+        <input type="text" id="nameInput" placeholder="اسمك هنا..." maxlength="30" />
+      </div>
+      <button class="scan-btn" id="scanBtn" onclick="startScan()">
+        🔮 افحص حظك اليوم
+      </button>
+    </div>
+
+    <!-- Scanning Animation -->
+    <div class="scanning-overlay" id="scanningOverlay">
+      <div class="scan-ring"></div>
+      <div class="scan-text" id="scanText">ANALYZING...</div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results">
+
+      <div class="luck-meter">
+        <div class="meter-circle">
+          <svg viewBox="0 0 180 180">
+            <circle class="meter-bg" cx="90" cy="90" r="80"/>
+            <circle class="meter-fill" id="meterFill" cx="90" cy="90" r="80"/>
+          </svg>
+          <div class="meter-number">
+            <span class="num" id="luckNum">0</span>
+            <span class="pct">%</span>
+          </div>
+        </div>
+        <div class="luck-label" id="luckLabel">...</div>
+      </div>
+
+      <div class="smart-msg" id="smartMsg"></div>
+
+      <div class="cats-grid" id="catsGrid"></div>
+
+      <div class="surprise-box">
+        <div class="surprise-icon" id="surpriseIcon">🎁</div>
+        <div>
+          <div class="surprise-title">مفاجأة اليوم</div>
+          <div class="surprise-text" id="surpriseText">...</div>
+        </div>
+      </div>
+
+      <button class="share-btn" onclick="shareResult()">
+        📤 شارك نتيجتك
+      </button>
+
+      <!-- Compare -->
+      <div class="compare-section">
+        <div class="compare-title">⚡ قارن حظك مع صاحبك</div>
+        <div class="compare-row">
+          <input type="text" id="friendInput" placeholder="اسم صاحبك..." />
+          <button class="compare-btn" onclick="compareNow()">قارن</button>
+        </div>
+        <div class="compare-result" id="compareResult"></div>
+      </div>
+
+      <button class="share-btn" style="margin-top:16px; border-color: var(--accent2); color: var(--accent2);" onclick="resetScan()">
+        🔄 فحص اسم جديد
+      </button>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== Stars =====
+(function() {
+  const s = document.getElementById('stars');
+  for (let i = 0; i < 120; i++) {
+    const d = document.createElement('div');
+    const sz = Math.random() * 2.5 + 0.5;
+    d.className = 'star';
+    d.style.cssText = `
+      width:${sz}px; height:${sz}px;
+      top:${Math.random()*100}%;
+      left:${Math.random()*100}%;
+      --d:${Math.random()*4+2}s;
+      animation-delay:${Math.random()*5}s;
+    `;
+    s.appendChild(d);
+  }
+})();
+
+// ===== Date =====
+(function() {
+  const now = new Date();
+  const opts = { weekday:'long', year:'numeric', month:'long', day:'numeric' };
+  document.getElementById('dateBadge').textContent = '📅 ' + now.toLocaleDateString('ar-EG', opts);
+})();
+
+// ===== Hash Function =====
+function hashCode(str) {
+  let hash = 0;
+  const today = new Date().toISOString().slice(0, 10);
+  const combined = str.toLowerCase().trim() + today;
+  for (let i = 0; i < combined.length; i++) {
+    hash = ((hash << 5) - hash) + combined.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function seededRandom(seed, max) {
+  const x = Math.sin(seed) * 10000;
+  return Math.floor((x - Math.floor(x)) * max);
+}
+
+// ===== Data =====
+const messages = [
+  (n, p) => `${n}، يومك اليوم مليء بطاقة ${p > 60 ? 'إيجابية رائعة' : p > 40 ? 'هادئة ومتوازنة' : 'تحتاج معها للصبر'}. استثمر كل لحظة بذكاء.`,
+  (n, p) => `${n}، النجوم تقول إن ${p > 60 ? 'فرصة ذهبية تقترب منك' : p > 40 ? 'يومك عادي لكن فيه تفاصيل جميلة' : 'التحديات هي من تبني الشخصية القوية'}.`,
+  (n, p) => `${n}، ${p > 60 ? 'طاقتك اليوم في أعلى مستوياتها، استغلها' : p > 40 ? 'توازن جميل بين الراحة والعمل اليوم' : 'بعض الأيام تكون للتفكير والتأمل، وهذا يومك'}.`,
+  (n, p) => `${n}، ${p > 70 ? '⚡ يوم استثنائي! كل قرار تتخذه اليوم سيكون صحيحاً' : p > 50 ? 'تدفق جيد في الطاقة، تابع مشاريعك بثقة' : 'خذ نفساً عميقاً، الغد أفضل وأجمل'}.`,
+];
+
+const categories = {
+  money: {
+    icon: '💰', name: 'المال',
+    good: ['يوم ممتاز للاستثمار', 'مكاسب غير متوقعة', 'طاقة مالية عالية'],
+    neutral: ['استقرار مالي', 'يوم عادي', 'لا خسائر ولا أرباح كبيرة'],
+    bad: ['تجنب القرارات المالية', 'يوم للتوفير', 'احذر من الإنفاق']
+  },
+  love: {
+    icon: '❤️', name: 'الحب',
+    good: ['يوم رومانسي رائع', 'علاقات إيجابية', 'قلبك مفتوح اليوم'],
+    neutral: ['علاقات هادئة', 'يوم للتفكير', 'توازن عاطفي'],
+    bad: ['تجنب الخلافات', 'يوم للإنفراد', 'ابتعد عن التوترات']
+  },
+  mood: {
+    icon: '🧠', name: 'المزاج',
+    good: ['سعادة غامرة', 'طاقة إيجابية', 'مزاج رائع طوال اليوم'],
+    neutral: ['مزاج عادي', 'هدوء نسبي', 'لا بأس'],
+    bad: ['يوم للراحة', 'تجنب الضغوط', 'خذ استراحة']
+  },
+  energy: {
+    icon: '⚡', name: 'الطاقة',
+    good: ['طاقة عالية جداً', 'نشاط مستمر', 'يوم مثالي للعمل'],
+    neutral: ['طاقة معتدلة', 'أداء طبيعي', 'وسط وكافي'],
+    bad: ['طاقة منخفضة', 'تحتاج نوم أكثر', 'يوم للاسترخاء']
+  }
+};
+
+const surprises = [
+  { icon: '💌', text: 'رسالة غير متوقعة في طريقها إليك' },
+  { icon: '🍀', text: 'فرصة ذهبية ستظهر من حيث لا تتوقع' },
+  { icon: '⚡', text: 'لقاء يغير مجرى أفكارك' },
+  { icon: '🌟', text: 'اعتراف بجهودك قادم قريباً' },
+  { icon: '🎯', text: 'قرار مهم سيبدو واضحاً اليوم' },
+  { icon: '🔮', text: 'تحدٍّ صغير يخفي داخله هديةً كبيرة' },
+  { icon: '🌙', text: 'شيء فقدته سيعود إليك' },
+  { icon: '🚀', text: 'طاقة إبداعية غير عادية تنتظرك' },
+];
+
+// ===== Main Scan =====
+let currentName = '';
+let currentLuck = 0;
+
+function startScan() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) {
+    showToast('✨ أدخل اسمك أولاً!');
+    return;
+  }
+  currentName = name;
+
+  document.getElementById('inputSection').style.display = 'none';
+  document.getElementById('scanningOverlay').classList.add('active');
+
+  const texts = ['ANALYZING NAME...', 'READING STARS...', 'CALCULATING LUCK...', 'ALMOST DONE...'];
+  let i = 0;
+  const interval = setInterval(() => {
+    document.getElementById('scanText').textContent = texts[i % texts.length];
+    i++;
+  }, 500);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    document.getElementById('scanningOverlay').classList.remove('active');
+    showResults(name);
+  }, 2200);
+}
+
+function showResults(name) {
+  const hash = hashCode(name);
+  const luck = 20 + seededRandom(hash, 75);
+  currentLuck = luck;
+
+  // Meter
+  const fill = document.getElementById('meterFill');
+  const circumference = 2 * Math.PI * 80;
+  let color;
+  if (luck >= 65) color = '#00ff88';
+  else if (luck >= 40) color = '#ffcc00';
+  else color = '#ff4466';
+
+  fill.style.stroke = color;
+
+  const results = document.getElementById('results');
+  results.classList.add('active');
+
+  // Animate number
+  let count = 0;
+  const numEl = document.getElementById('luckNum');
+  numEl.style.color = color;
+  const countInterval = setInterval(() => {
+    count = Math.min(count + 2, luck);
+    numEl.textContent = count;
+    const offset = circumference - (count / 100) * circumference;
+    fill.style.strokeDashoffset = offset;
+    if (count >= luck) clearInterval(countInterval);
+  }, 30);
+
+  // Label
+  const labels = luck >= 65 ? ['حظ ممتاز! 🌟', 'يوم رائع ✨', 'مبروك! 🎉'] :
+                  luck >= 40 ? ['حظ جيد 😊', 'يوم متوازن 🌤️', 'مقبول 👍'] :
+                               ['حظ ضعيف 😔', 'تحلَّ بالصبر 💪', 'الغد أفضل 🌅'];
+  document.getElementById('luckLabel').textContent = labels[seededRandom(hash + 1, 3)];
+  document.getElementById('luckLabel').style.color = color;
+
+  // Smart Message
+  const msgFn = messages[seededRandom(hash + 2, messages.length)];
+  typeEffect(document.getElementById('smartMsg'), msgFn(name, luck));
+
+  // Categories
+  const grid = document.getElementById('catsGrid');
+  grid.innerHTML = '';
+  const keys = ['money', 'love', 'mood', 'energy'];
+  keys.forEach((key, idx) => {
+    const cat = categories[key];
+    const val = seededRandom(hash + idx + 10, 3);
+    const tier = val === 0 ? 'good' : val === 1 ? 'neutral' : 'bad';
+    const tierLabel = tier === 'good' ? 'ممتاز' : tier === 'neutral' ? 'عادي' : 'ضعيف';
+    const textArr = cat[tier];
+    const text = textArr[seededRandom(hash + idx + 20, textArr.length)];
+    grid.innerHTML += `
+      <div class="cat-card">
+        <div class="cat-icon">${cat.icon}</div>
+        <div class="cat-name">${cat.name}</div>
+        <div class="cat-value ${tier}">${tierLabel}</div>
+        <div style="font-size:12px; color: var(--muted); margin-top:6px;">${text}</div>
+      </div>`;
+  });
+
+  // Surprise
+  const surpriseIdx = seededRandom(hash + 99, surprises.length);
+  document.getElementById('surpriseIcon').textContent = surprises[surpriseIdx].icon;
+  document.getElementById('surpriseText').textContent = surprises[surpriseIdx].text;
+
+  // Sound
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.start(); osc.stop(ctx.currentTime + 0.4);
+  } catch(e) {}
+}
+
+function typeEffect(el, text) {
+  el.textContent = '';
+  let i = 0;
+  const interval = setInterval(() => {
+    el.textContent += text[i];
+    i++;
+    if (i >= text.length) clearInterval(interval);
+  }, 30);
+}
+
+function compareNow() {
+  const friend = document.getElementById('friendInput').value.trim();
+  if (!friend) { showToast('أدخل اسم صاحبك!'); return; }
+  if (!currentName) { showToast('افحص حظك أولاً!'); return; }
+
+  const myHash = hashCode(currentName);
+  const myLuck = 20 + seededRandom(myHash, 75);
+  const friendHash = hashCode(friend);
+  const friendLuck = 20 + seededRandom(friendHash, 75);
+
+  const myColor = myLuck >= 65 ? '#00ff88' : myLuck >= 40 ? '#ffcc00' : '#ff4466';
+  const frColor = friendLuck >= 65 ? '#00ff88' : friendLuck >= 40 ? '#ffcc00' : '#ff4466';
+
+  const winner = myLuck > friendLuck ? `${currentName} حظه أعلى اليوم! 🎉` :
+                 myLuck < friendLuck ? `${friend} حظه أعلى اليوم! 🎉` :
+                 'تساويتوا في الحظ! 😮';
+
+  const maxH = 120;
+  const myH = Math.max(20, (myLuck / 100) * maxH);
+  const frH = Math.max(20, (friendLuck / 100) * maxH);
+
+  const res = document.getElementById('compareResult');
+  res.innerHTML = `
+    <div style="font-size:16px; font-weight:700; margin-bottom:14px;">${winner}</div>
+    <div class="compare-bars">
+      <div class="cbar">
+        <div class="cbar-num" style="color:${myColor}">${myLuck}%</div>
+        <div class="cbar-fill" style="height:${myH}px; background:${myColor};"></div>
+        <div class="cbar-name">${currentName}</div>
+      </div>
+      <div class="cbar">
+        <div class="cbar-num" style="color:${frColor}">${friendLuck}%</div>
+        <div class="cbar-fill" style="height:${frH}px; background:${frColor};"></div>
+        <div class="cbar-name">${friend}</div>
+      </div>
+    </div>`;
+  res.classList.add('active');
+}
+
+function shareResult() {
+  const text = `🔮 حاسبة الحظ اليومية\n👤 الاسم: ${currentName}\n✨ الحظ: ${currentLuck}%\n📅 ${new Date().toLocaleDateString('ar-EG')}\n\nجرّب حظك أنت كمان!`;
+  if (navigator.share) {
+    navigator.share({ title: 'Luck Scanner', text });
+  } else {
+    navigator.clipboard.writeText(text).then(() => showToast('✅ تم نسخ النتيجة!'));
+  }
+}
+
+function resetScan() {
+  document.getElementById('results').classList.remove('active');
+  document.getElementById('compareResult').classList.remove('active');
+  document.getElementById('friendInput').value = '';
+  document.getElementById('nameInput').value = '';
+  document.getElementById('inputSection').style.display = 'block';
+  currentName = '';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+document.getElementById('nameInput').addEventListener('keypress', e => {
+  if (e.key === 'Enter') startScan();
+});
+</script>
+</body>
+</html>
+
